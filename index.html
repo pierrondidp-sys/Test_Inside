@@ -726,21 +726,38 @@ async function deleteDraft() {
     const drafts = await getAllDraftsIndexedDB();
     if (drafts.length === 0) { alert('Aucune sauvegarde à supprimer.'); return; }
     const choice = prompt(
-      'Saisissez le numéro de la sauvegarde à SUPPRIMER :\n\n' +
+      'Numéro(s) à SUPPRIMER (séparés par des virgules) :\n\n' +
       drafts.map((d, i) => `${i + 1} – ${d.id}`).join('\n')
     );
-    const i = parseInt(choice, 10) - 1;
-    if (isNaN(i) || !drafts[i]) return;
-    const id = drafts[i].id;
-    const ok = confirm('Voulez-vous vraiment supprimer cette sauvegarde ?\n\n' + id);
-    if (!ok) return;
+    if (!choice || !choice.trim()) return;
+
+    const selected = [...new Set(
+      choice.split(/[\s,;]+/)
+        .map(s => parseInt(s.trim(), 10) - 1)
+        .filter(i => !isNaN(i) && i >= 0 && i < drafts.length)
+    )];
+    if (selected.length === 0) return;
+
+    const toDelete = selected.map(i => drafts[i]);
+    const confirmMsg = toDelete.length === 1
+      ? 'Supprimer cette sauvegarde ?\n\n' + toDelete[0].id
+      : `Supprimer ces ${toDelete.length} sauvegardes ?\n\n` + toDelete.map(d => '• ' + d.id).join('\n');
+    if (!confirm(confirmMsg)) return;
+
     const db = await getDB();
-    return new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      store.delete(id);
-      tx.oncomplete = () => { alert('Sauvegarde supprimée ✅'); resolve(); };
+      toDelete.forEach(d => store.delete(d.id));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
+
+    if (currentDraftId && toDelete.some(d => d.id === currentDraftId)) {
+      currentDraftId = null;
+      updateStatusBar();
+    }
+    alert(toDelete.length === 1 ? 'Sauvegarde supprimée ✅' : `${toDelete.length} sauvegardes supprimées ✅`);
   } catch (e) { alert('❌ Erreur lors de la suppression : ' + e.message); console.error(e); }
 }
 
