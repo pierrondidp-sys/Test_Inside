@@ -338,22 +338,14 @@ function generateFileName(fileExtension = 'pdf') {
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
 }
 
-function triggerDownload(blob, filename) {
+function triggerDownload(dataUri, filename) {
   try {
-    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
-    a.setAttribute('aria-hidden', 'true');
-    a.href = url;
+    a.href = dataUri;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    // Laisser l'ancre et l'URL en vie 30 s pour que le navigateur
-    // ait le temps de lire le blob, puis nettoyer.
-    setTimeout(function() {
-      URL.revokeObjectURL(url);
-      if (document.body.contains(a)) document.body.removeChild(a);
-    }, 30000);
+    document.body.removeChild(a);
   } catch (e) {
     alert('Erreur téléchargement : ' + e.message);
     console.error(e);
@@ -548,7 +540,7 @@ function exportPDF() {
     });
   }
 
-  triggerDownload(pdf.output('blob'), generateFileName('pdf'));
+  triggerDownload(pdf.output('datauristring'), generateFileName('pdf'));
 }
 
 // ── Sauvegarde locale (IndexedDB) ──────────────────────────────────
@@ -766,8 +758,10 @@ function exportDirect() {
     photos: photosToExport
   };
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  triggerDownload(blob, generateFileName('json'));
+  triggerDownload(
+    'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2)),
+    generateFileName('json')
+  );
 }
 
 function buildAgentEmail(agent) {
@@ -796,9 +790,11 @@ function exportDraftByMail() {
     photos: photosToExport
   };
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const fileName = generateFileName('json');
-  triggerDownload(blob, fileName);
+  triggerDownload(
+    'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2)),
+    fileName
+  );
 
   setTimeout(() => {
     const agent = v('agentAstreinte');
