@@ -341,15 +341,6 @@ function generateFileName(fileExtension = 'pdf') {
 }
 
 function triggerDownload(blob, filename) {
-  if (location.protocol === 'https:' && navigator.share && navigator.canShare) {
-    var file = new File([blob], filename, { type: blob.type });
-    if (navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: filename }).catch(function(err) {
-        if (err.name !== 'AbortError') { _fallbackDownload(blob, filename); }
-      });
-      return;
-    }
-  }
   _fallbackDownload(blob, filename);
 }
 
