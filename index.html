@@ -587,9 +587,9 @@ async function saveDraft() {
   const isUpdate = !!currentDraftId;
   const id = currentDraftId || generateDraftId();
 
-  const photosToSave = photos.map(p => ({
-    base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng
-  }));
+  const photosToSave = photos
+    .filter(p => p.base64Compressed != null)
+    .map(p => ({ base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng }));
 
   const draft = {
     id,
@@ -745,11 +745,11 @@ function exportDirect() {
   if (photos.length === 0 && !confirm("Aucune photo détectée.\n\nVoulez-vous quand même exporter le rapport ?")) { return; }
 
   const now = new Date();
-  const id = generateDraftId();
+  const id = currentDraftId || generateDraftId();
 
-  const photosToExport = photos.map(p => ({
-    base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng
-  }));
+  const photosToExport = photos
+    .filter(p => p.base64Compressed != null)
+    .map(p => ({ base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng }));
 
   const data = {
     id, exportedAt: now.toISOString(),
@@ -775,11 +775,11 @@ function buildAgentEmail(agent) {
 function exportDraftByMail() {
   const now = new Date();
   const ville = getVille() || 'VILLE';
-  const id = generateDraftId();
+  const id = currentDraftId || generateDraftId();
 
-  const photosToExport = photos.map(p => ({
-    base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng
-  }));
+  const photosToExport = photos
+    .filter(p => p.base64Compressed != null)
+    .map(p => ({ base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng }));
 
   const data = {
     id, exportedAt: now.toISOString(),
