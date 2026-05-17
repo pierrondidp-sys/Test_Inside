@@ -928,6 +928,50 @@ async function checkLastDraft() {
   updateStatusBar();
 }
 
+function showToast(msg, durationMs = 3500) {
+  let toast = document.getElementById('_toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = '_toast';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:12px 20px;border-radius:6px;font-size:0.9em;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, durationMs);
+}
+
+let _autoSavePending = false;
+
+async function autoSaveOnExit() {
+  const fields = ['adresse', 'agentAstreinte', 'date', 'heureDebut', 'origine', 'heureFin', 'objet', 'nature', 'autres'];
+  const hasData = fields.some(id => { const el = document.getElementById(id); return el && el.value.trim() !== ''; })
+                  || photos.length > 0;
+  if (!hasData) return;
+
+  const id = currentDraftId || generateDraftId();
+  const photosToSave = photos
+    .filter(p => p.base64Compressed != null)
+    .map(p => ({ base64: p.base64Compressed, timestamp: p.timestamp, lat: p.lat, lng: p.lng }));
+
+  const draft = {
+    id, savedAt: new Date().toISOString(), ville: getVille() || 'VILLE',
+    form: {
+      ville: getVille(), adresse: v('adresse'), agentAstreinte: v('agentAstreinte'),
+      date: v('date'), heureDebut: v('heureDebut'), origine: v('origine'),
+      heureFin: v('heureFin'), objet: v('objet'), nature: v('nature'), autres: v('autres')
+    },
+    photos: photosToSave
+  };
+
+  try {
+    await saveDraftIndexedDB(draft);
+    if (!currentDraftId) { currentDraftId = id; updateStatusBar(); }
+    _autoSavePending = true;
+  } catch (e) { console.error('Auto-save on exit failed:', e); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const isAndroid = /Android/i.test(navigator.userAgent);
   const micButton = document.querySelector('button[onclick^="startDictation"]');
@@ -944,6 +988,18 @@ document.addEventListener('DOMContentLoaded', () => {
     adresseField.addEventListener('input',  syncCityField);
     adresseField.addEventListener('change', syncCityField);
   }
+
+  // Sauvegarde automatique à la fermeture / mise en arrière-plan
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      showToast('💾 Sauvegarde automatique en cours…');
+      autoSaveOnExit();
+    } else if (_autoSavePending) {
+      _autoSavePending = false;
+      showToast('✅ Brouillon sauvegardé automatiquement');
+    }
+  });
+  window.addEventListener('pagehide', autoSaveOnExit);
 });
 </script>
 
