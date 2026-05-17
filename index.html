@@ -85,6 +85,7 @@
 <button type="button" form="rapport" onclick="importDraft()">📥 Importer une sauvegarde</button>
 
 <input type="file" id="importFile" accept="application/json" style="display:none">
+<div id="downloadArea" style="display:none; margin:8px 0;"></div>
 
 <!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -130,6 +131,8 @@ function resetForm() {
   renderPreview();
   currentDraftId = null;
   updateStatusBar();
+  const dlArea = document.getElementById('downloadArea');
+  if (dlArea) { dlArea.innerHTML = ''; dlArea.style.display = 'none'; }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -338,18 +341,19 @@ function generateFileName(fileExtension = 'pdf') {
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
 }
 
-function triggerDownload(dataUri, filename) {
-  try {
-    var a = document.createElement('a');
-    a.href = dataUri;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  } catch (e) {
-    alert('Erreur téléchargement : ' + e.message);
-    console.error(e);
-  }
+function showDownloadLink(dataUri, filename, label) {
+  const area = document.getElementById('downloadArea');
+  const prev = area.querySelector('a[data-label="' + label + '"]');
+  if (prev) prev.remove();
+  const a = document.createElement('a');
+  a.href = dataUri;
+  a.download = filename;
+  a.setAttribute('data-label', label);
+  a.textContent = '⬇️ ' + label + ' — ' + filename;
+  a.style.cssText = 'display:block;padding:12px;margin:4px 0;background:#1565c0;color:#fff;border-radius:4px;text-decoration:none;text-align:center;font-weight:bold;font-size:0.95em;';
+  area.appendChild(a);
+  area.style.display = 'block';
+  area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function renderPreview() {
@@ -540,7 +544,7 @@ function exportPDF() {
     });
   }
 
-  triggerDownload(pdf.output('datauristring'), generateFileName('pdf'));
+  showDownloadLink(pdf.output('datauristring'), generateFileName('pdf'), 'PDF');
 }
 
 // ── Sauvegarde locale (IndexedDB) ──────────────────────────────────
@@ -758,9 +762,10 @@ function exportDirect() {
     photos: photosToExport
   };
 
-  triggerDownload(
+  showDownloadLink(
     'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2)),
-    generateFileName('json')
+    generateFileName('json'),
+    'Sauvegarde JSON'
   );
 }
 
@@ -791,9 +796,10 @@ function exportDraftByMail() {
   };
 
   const fileName = generateFileName('json');
-  triggerDownload(
+  showDownloadLink(
     'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2)),
-    fileName
+    fileName,
+    'Sauvegarde JSON'
   );
 
   setTimeout(() => {
