@@ -340,19 +340,32 @@ function generateFileName(fileExtension = 'pdf') {
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
 }
 
-function triggerDownload(blob, filename) {
-  _fallbackDownload(blob, filename);
-}
+var _dlEl = null;
+var _dlPrevUrl = '';
 
-function _fallbackDownload(blob, filename) {
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+function triggerDownload(blob, filename) {
+  try {
+    if (!_dlEl) {
+      _dlEl = document.createElement('a');
+      _dlEl.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+      _dlEl.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(_dlEl);
+    }
+    if (_dlPrevUrl) { URL.revokeObjectURL(_dlPrevUrl); _dlPrevUrl = ''; }
+    var url = URL.createObjectURL(blob);
+    _dlPrevUrl = url;
+    _dlEl.href = url;
+    _dlEl.download = filename;
+    _dlEl.click();
+    setTimeout(function() {
+      URL.revokeObjectURL(url);
+      if (_dlPrevUrl === url) _dlPrevUrl = '';
+      _dlEl.href = '';
+    }, 30000);
+  } catch (e) {
+    alert('Erreur téléchargement : ' + e.message);
+    console.error(e);
+  }
 }
 
 function renderPreview() {
@@ -793,7 +806,7 @@ function exportDraftByMail() {
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const fileName = generateFileName('json');
-  _fallbackDownload(blob, fileName);
+  triggerDownload(blob, fileName);
 
   setTimeout(() => {
     const agent = v('agentAstreinte');
