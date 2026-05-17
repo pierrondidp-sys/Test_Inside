@@ -338,27 +338,21 @@ function generateFileName(fileExtension = 'pdf') {
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
 }
 
-var _dlEl = null;
-var _dlPrevUrl = '';
-
 function triggerDownload(blob, filename) {
   try {
-    if (!_dlEl) {
-      _dlEl = document.createElement('a');
-      _dlEl.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
-      _dlEl.setAttribute('aria-hidden', 'true');
-      document.body.appendChild(_dlEl);
-    }
-    if (_dlPrevUrl) { URL.revokeObjectURL(_dlPrevUrl); _dlPrevUrl = ''; }
     var url = URL.createObjectURL(blob);
-    _dlPrevUrl = url;
-    _dlEl.href = url;
-    _dlEl.download = filename;
-    _dlEl.click();
+    var a = document.createElement('a');
+    a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+    a.setAttribute('aria-hidden', 'true');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    // Laisser l'ancre et l'URL en vie 30 s pour que le navigateur
+    // ait le temps de lire le blob, puis nettoyer.
     setTimeout(function() {
       URL.revokeObjectURL(url);
-      if (_dlPrevUrl === url) _dlPrevUrl = '';
-      _dlEl.href = '';
+      if (document.body.contains(a)) document.body.removeChild(a);
     }, 30000);
   } catch (e) {
     alert('Erreur téléchargement : ' + e.message);
