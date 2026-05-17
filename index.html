@@ -323,26 +323,33 @@ function formatDateForPDF(dateStr) {
   return `${day} - ${month} - ${year}`;
 }
 
-// ──────────────────────────────────────────────────────────────────
-// ✅ GÉNÉRATION DU NOM DE FICHIER — Règle : VILLE_JJ-MM-AA_hh-mm
-// ──────────────────────────────────────────────────────────────────
-
-// ──────────────────────────────────────────────────────────────────
-// ✅ GÉNÉRATION DU NOM DE FICHIER — Règle : VILLE_Objet_JJ-MM-AA
-// ──────────────────────────────────────────────────────────────────
 function generateFileName(fileExtension = 'pdf') {
   const sanitize = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '');
   const ville = sanitize(getVille() || 'VILLE');
   const objet = sanitize((v('objet') || 'OBJET').trim());
-
   const dateInput = v('date');
   let formattedDate = 'JJ-MM-AA';
   if (dateInput) {
     const [year, month, day] = dateInput.split('-');
     formattedDate = `${day}-${month}-${year.slice(-2)}`;
   }
-
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
+}
+
+function generateJsonFileName() {
+  const sanitize = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '');
+  const ville = sanitize(getVille() || 'VILLE');
+  const objet = sanitize((v('objet') || 'OBJET').trim());
+  const dateInput = v('date');
+  let formattedDate = 'JJ-MM-AA';
+  if (dateInput) {
+    const [year, month, day] = dateInput.split('-');
+    formattedDate = `${day}-${month}-${year.slice(-2)}`;
+  }
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mn = String(now.getMinutes()).padStart(2, '0');
+  return `Sauvegarde_${ville}_${objet}_${formattedDate}_${hh}-${mn}.json`;
 }
 
 function showDownloadLink(blob, filename, label) {
@@ -360,9 +367,7 @@ function showDownloadLink(blob, filename, label) {
   a.style.cssText = 'display:block;padding:12px;margin:4px 0;background:#1565c0;color:#fff;border-radius:4px;text-decoration:none;text-align:center;font-weight:bold;font-size:0.95em;';
   // Chaque tap génère une blob URL fraîche — URLs uniques = jamais bloquées
   a.addEventListener('click', function() {
-    if (this.dataset.burl) URL.revokeObjectURL(this.dataset.burl);
     const url = URL.createObjectURL(blob);
-    this.dataset.burl = url;
     this.href = url;
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   });
@@ -779,7 +784,7 @@ function exportDirect() {
 
   showDownloadLink(
     new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
-    generateFileName('json'),
+    generateJsonFileName(),
     'Sauvegarde JSON'
   );
 }
@@ -810,7 +815,7 @@ function exportDraftByMail() {
     photos: photosToExport
   };
 
-  const fileName = generateFileName('json');
+  const fileName = generateJsonFileName();
   showDownloadLink(
     new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
     fileName,
