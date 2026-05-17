@@ -727,13 +727,10 @@ function sendMail() {
   window.open(mailto, '_self');
 }
 
-async function exportDirect() {
-  await autoSaveDraftIfNeeded();
-
+function exportDirect() {
   if (photos.length === 0 && !confirm("Aucune photo détectée.\n\nVoulez-vous quand même exporter le rapport ?")) { return; }
 
   const now = new Date();
-  const ville = getVille() || 'VILLE';
   const id = generateDraftId();
 
   const photosToExport = photos.map(p => ({
