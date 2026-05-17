@@ -68,14 +68,12 @@
   </div>
   <div id="preview"></div>
 
-  <button type="button" onclick="exportPDF()">📋 Générer PDF</button>
 </form>
 
 <!-- Correction 2 : form="rapport" sur tous les boutons externes -->
-<button type="button" form="rapport" onclick="sendMail()">✉️ Envoyer par mail</button>
-
 <div id="currentDraftStatus" style="display:none; background:#e8f4e8; border:1px solid #4caf50; padding:8px 12px; margin:8px 0; border-radius:4px; font-size:0.9em; color:#2e7d32;"></div>
-
+<button type="button" form="rapport" onclick="exportPDF()">📋 Générer PDF</button>
+<button type="button" form="rapport" onclick="sendMail()">✉️ Envoyer par mail</button>
 <button type="button" form="rapport" onclick="resetForm()">🆕 Nouvelle intervention</button>
 <button type="button" form="rapport" onclick="saveDraft()">💾 Sauvegarder</button>
 <button type="button" form="rapport" onclick="loadDraft()">📂 Charger</button>
