@@ -132,7 +132,11 @@ function resetForm() {
   currentDraftId = null;
   updateStatusBar();
   const dlArea = document.getElementById('downloadArea');
-  if (dlArea) { dlArea.innerHTML = ''; dlArea.style.display = 'none'; }
+  if (dlArea) {
+    dlArea.querySelectorAll('a[data-burl]').forEach(a => URL.revokeObjectURL(a.dataset.burl));
+    dlArea.innerHTML = '';
+    dlArea.style.display = 'none';
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -341,16 +345,27 @@ function generateFileName(fileExtension = 'pdf') {
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
 }
 
-function showDownloadLink(dataUri, filename, label) {
+function showDownloadLink(blob, filename, label) {
   const area = document.getElementById('downloadArea');
   const prev = area.querySelector('a[data-label="' + label + '"]');
-  if (prev) prev.remove();
+  if (prev) {
+    if (prev.dataset.burl) URL.revokeObjectURL(prev.dataset.burl);
+    prev.remove();
+  }
   const a = document.createElement('a');
-  a.href = dataUri;
   a.download = filename;
+  a.href = '#';
   a.setAttribute('data-label', label);
   a.textContent = '⬇️ ' + label + ' — ' + filename;
   a.style.cssText = 'display:block;padding:12px;margin:4px 0;background:#1565c0;color:#fff;border-radius:4px;text-decoration:none;text-align:center;font-weight:bold;font-size:0.95em;';
+  // Chaque tap génère une blob URL fraîche — URLs uniques = jamais bloquées
+  a.addEventListener('click', function() {
+    if (this.dataset.burl) URL.revokeObjectURL(this.dataset.burl);
+    const url = URL.createObjectURL(blob);
+    this.dataset.burl = url;
+    this.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
   area.appendChild(a);
   area.style.display = 'block';
   area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -544,7 +559,7 @@ function exportPDF() {
     });
   }
 
-  showDownloadLink(pdf.output('datauristring'), generateFileName('pdf'), 'PDF');
+  showDownloadLink(pdf.output('blob'), generateFileName('pdf'), 'PDF');
 }
 
 // ── Sauvegarde locale (IndexedDB) ──────────────────────────────────
@@ -763,7 +778,7 @@ function exportDirect() {
   };
 
   showDownloadLink(
-    'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2)),
+    new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
     generateFileName('json'),
     'Sauvegarde JSON'
   );
@@ -797,7 +812,7 @@ function exportDraftByMail() {
 
   const fileName = generateFileName('json');
   showDownloadLink(
-    'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data, null, 2)),
+    new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
     fileName,
     'Sauvegarde JSON'
   );
