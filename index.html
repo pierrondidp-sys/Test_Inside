@@ -326,10 +326,11 @@ function formatDateForPDF(dateStr) {
 // ✅ GÉNÉRATION DU NOM DE FICHIER — Règle : VILLE_Objet_JJ-MM-AA
 // ──────────────────────────────────────────────────────────────────
 function generateFileName(fileExtension = 'pdf') {
-  const ville = (getVille() || 'VILLE').replace(/\s+/g, '-');
-  const objet = (v('objet') || 'OBJET').trim().replace(/\s+/g, '-');
+  const sanitize = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-{2,}/g, '-').replace(/^-|-$/g, '');
+  const ville = sanitize(getVille() || 'VILLE');
+  const objet = sanitize((v('objet') || 'OBJET').trim());
 
-  const dateInput = v('date'); // Format YYYY-MM-DD
+  const dateInput = v('date');
   let formattedDate = 'JJ-MM-AA';
   if (dateInput) {
     const [year, month, day] = dateInput.split('-');
@@ -337,6 +338,30 @@ function generateFileName(fileExtension = 'pdf') {
   }
 
   return `${ville}_${objet}_${formattedDate}.${fileExtension}`;
+}
+
+function triggerDownload(blob, filename) {
+  if (location.protocol === 'https:' && navigator.share && navigator.canShare) {
+    var file = new File([blob], filename, { type: blob.type });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: filename }).catch(function(err) {
+        if (err.name !== 'AbortError') { _fallbackDownload(blob, filename); }
+      });
+      return;
+    }
+  }
+  _fallbackDownload(blob, filename);
+}
+
+function _fallbackDownload(blob, filename) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
 }
 
 function renderPreview() {
@@ -429,9 +454,7 @@ function syncCityField() {
   setVilleInSelect(detectedCity);
 }
 
-async function exportPDF() {
-  await autoSaveDraftIfNeeded();
-
+function exportPDF() {
   const pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -529,7 +552,7 @@ async function exportPDF() {
     });
   }
 
-  pdf.save(generateFileName('pdf'));
+  triggerDownload(pdf.output('blob'), generateFileName('pdf'));
 }
 
 // ── Sauvegarde locale (IndexedDB) ──────────────────────────────────
@@ -748,14 +771,7 @@ function exportDirect() {
   };
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = generateFileName('json');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  triggerDownload(blob, generateFileName('json'));
 }
 
 function buildAgentEmail(agent) {
@@ -765,9 +781,7 @@ function buildAgentEmail(agent) {
     .replace(/\s+/g, '.') + '@seineouest.fr';
 }
 
-async function exportDraftByMail() {
-  await autoSaveDraftIfNeeded();
-
+function exportDraftByMail() {
   const now = new Date();
   const ville = getVille() || 'VILLE';
   const id = generateDraftId();
@@ -787,15 +801,8 @@ async function exportDraftByMail() {
   };
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
   const fileName = generateFileName('json');
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  _fallbackDownload(blob, fileName);
 
   setTimeout(() => {
     const agent = v('agentAstreinte');
